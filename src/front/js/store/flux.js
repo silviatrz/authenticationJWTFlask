@@ -28,6 +28,13 @@ const getState = ({ getStore, getActions, setStore }) => {
 					.then(data => setStore({ message: data.message }))
 					.catch(error => console.log("Error loading message from backend", error));
 			},
+			getPrivate: () => {
+				// fetching data from the backend
+				fetch("https://3001-peach-salamander-vd6jjz9e.ws-eu18.gitpod.io/protected")
+					.then(resp => resp.json())
+					.then(data => setStore({ message: data.message }))
+					.catch(error => console.log("Error loading message from backend", error));
+			},
 			changeColor: (index, color) => {
 				//get the store
 				const store = getStore();

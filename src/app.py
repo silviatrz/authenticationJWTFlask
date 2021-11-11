@@ -7,15 +7,19 @@ from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
-from api.models import db
+from api.models import db, User
 from api.routes import api
 from api.admin import setup_admin
+from flask_sqlalchemy import SQLAlchemy
 #from models import Person
+from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
 
 ENV = os.getenv("FLASK_ENV")
 static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../public/')
 app = Flask(__name__)
 app.url_map.strict_slashes = False
+
+jwt = JWTManager(app)
 
 # database condiguration
 db_url = os.getenv("DATABASE_URL")
@@ -58,7 +62,62 @@ def serve_any_other_file(path):
     response.cache_control.max_age = 0 # avoid cache memory
     return response
 
+@app.route("/singup", methods=["POST"])
+def create_user():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if data is None:
+        return "The request body is null", 400
+    if 'email' not in data:
+        return 'You need to specify the email',400
+    if 'password' not in data:
+        return 'You need to specify the password', 400
+
+    user = User.query\
+        .filter_by(email = email)\
+        .first()
+    if not user:
+        user = User()
+        user.email = email,
+        user.password = password
+        user.is_active = True
+
+        db.session.add(user)
+        db.session.commit()
+    else:
+        return 'User already exists', 400
+
+    return "ok", 200
+
+
+@app.route("/token", methods=["POST"])
+def create_token():
+    email = request.json.get("email", None)
+    password = request.json.get("password", None)
+    # Query your database for username and password
+    user = User.query.filter_by(email=email, password=password).first()
+    if user is None:
+        # the user was not found on the database
+        return jsonify({"msg": "Bad username or password"}), 401
+    
+    # create a new token with the user id inside
+    access_token = create_access_token(identity=user.id)
+    return jsonify({ "token": access_token, "user_id": user.id })
+
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    return jsonify({"id": user.id, "email": user.email }), 200
+
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3001))
     app.run(host='0.0.0.0', port=PORT, debug=True)
+
+#https://web.postman.co/home
