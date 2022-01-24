@@ -87,19 +87,17 @@ def create_user():
         db.session.add(user)
         db.session.commit()
     else:
-        return 'User already exists', 400
+        return jsonify({"msg": "User already exists"}), 400
 
-    return "ok", 200
+    return jsonify({"msg": "User registered"}), 200
 
 
 @app.route("/token", methods=["POST"])
 def create_token():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
-    # Query your database for username and password
     user = User.query.filter_by(email=email, password=password).first()
     if user is None:
-        # the user was not found on the database
         return jsonify({"msg": "Bad username or password"}), 401
     
     # create a new token with the user id inside
@@ -119,5 +117,3 @@ def protected():
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3001))
     app.run(host='0.0.0.0', port=PORT, debug=True)
-
-#https://web.postman.co/home
